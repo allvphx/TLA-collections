@@ -3,9 +3,9 @@ EXTENDS Integers, FiniteSets
 
 CONSTANTS
     Proposers, Acceptors, Learners, Numbers, Values
-ASSUME IsFiniteSet(Proposers) /\ IsFiniteSet(Acceptors) /\ IsFiniteSet(Learners)
-ASSUME Numbers \subseteq Nat
+
 AllNodes == UNION {Proposers, Acceptors, Learners}
+ASSUME Numbers \subseteq Nat
 
 VARIABLES in_channel, out_channel
 
@@ -95,5 +95,3 @@ LivenessSpec == Spec /\ WF_<<in_channel,out_channel>>(Next)
 
 Safety == [](Cardinality(UNION {{i \in in_channel[l] : i["t"] = "LEARNED"} : l \in Learners}) < 2)
 ConditionLiveness == <>(\E l \in Learners: \E i \in in_channel[l]: i["t"] = "LEARNED")
-
-THEOREM Spec => Safety

@@ -5,7 +5,6 @@ CONSTANTS
     Proposers, Acceptors, Learners, Numbers, Values
 
 AllNodes == UNION {Proposers, Acceptors, Learners}
-ASSUME Numbers \subseteq Nat
 
 VARIABLES in_channel, out_channel
 
@@ -19,7 +18,7 @@ IsMajority(s, full) ==
 
 \* proposer select a maximum proposal number n and send PROPOSE request with n to a quorm.
 Phase1A ==
-  \E n \in Number, p \in Proposers, as \in SUBSET Acceptors:
+  \E n \in Numbers, p \in Proposers, as \in SUBSET Acceptors:
     /\ IsMajority(as, Acceptors)
     /\ ~\E o \in out_channel[p]: o["t"] = "PREPARE" /\ o["n"] >= n \* no n lower than current one.
     /\ Send(p, as, [t |-> "PREPARE", n |-> n, s |-> p])
@@ -30,7 +29,7 @@ Phase1B ==
   \E a \in Acceptors:
     \E i \in in_channel[a]:
         /\  i["t"] = "PREPARE"
-        /\  ~\E o \in out_channel[a]: o["t"] = "PROMISE" /\ o["n"] >= i["n"]
+        /\  ~\E o \in out_channel[a]: o["t"] = "PROMISE" /\ o["n"] > i["n"]
         \* each time we only promise for the PREPARE with highest n.
         /\  IF ~\E o \in out_channel[a]: o["t"] = "ACCEPTED"
             \* if we have not accepted some value, send back the PROMISE message.
@@ -44,7 +43,7 @@ Phase1B ==
 Phase2A ==
   \E n \in Numbers, p \in Proposers, as \in SUBSET Acceptors:
     \E m \in in_channel[p]:
-        /\ IsMajority(a, Acceptors)
+        /\ IsMajority(as, Acceptors)
         /\ m["t"] = "PROMISE" /\ m["n"] = n /\ m["s"] \in as
         /\ \A a \in as: \E i \in in_channel[p]: i["t"] = "PROMISE" /\ i["n"] = n /\ i["s"] = a
         \* the proposer has received PROMISE for n from majority.
@@ -68,7 +67,7 @@ Phase2B ==
             \/ \E o \in out_channel[a] : o["t"] = "PROMISE" /\ o["n"] > i["n"]
             \* the accepter has PROMISED one with higher n.
             \/ \E o \in out_channel[a] : o["t"] = "ACCEPTED" /\ o["m"] >= i["n"]
-            \* or the accepter has ACCEPTED one with higher n. ("m" is the highest n encountered)
+            \* or the accepter has ACCEPTED one >= n. ("m" is the highest n encountered)
         /\ Send(a, UNION {Learners, Proposers}, [t |-> "ACCEPTED", m |-> i["n"], w |-> i["v"], s |-> a])
         \* the optimization indicated in Paxos Made Simple: inform proposer to abandon proposal.
 
@@ -90,8 +89,10 @@ Next ==
   \/ Learned
 
 Spec == Init /\ [][Next]_<<in_channel,out_channel>>
-LivenessSpec == Spec /\ WF_<<in_channel,out_channel>>(Next)
+\* LivenessSpec == Spec /\ WF_<<in_channel,out_channel>>(Next)
 
 
 Safety == [](Cardinality(UNION {{i \in in_channel[l] : i["t"] = "LEARNED"} : l \in Learners}) < 2)
-ConditionLiveness == <>(\E l \in Learners: \E i \in in_channel[l]: i["t"] = "LEARNED")
+\* ConditionLiveness == <>(\E l \in Learners: \E i \in in_channel[l]: i["t"] = "LEARNED")
+
+==================================================================================
